@@ -1,0 +1,4 @@
+{
+    "python.pythonPath": "/usr/bin/python",
+    "python.autoComplete.extraPaths": ["/nfs/home/2019310825/.local/lib/python3.7/site-packages"]
+}
