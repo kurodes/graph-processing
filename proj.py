@@ -1,5 +1,6 @@
 import sys
 import time
+import random
 
 from pyspark import SparkConf, SparkContext
 
@@ -16,6 +17,9 @@ def convert(edges, maps):
     des = maps.join(src.map(lambda x: (x[1], x[0]))).map(
         lambda x: (x[1][1], x[1][0]))
     return des
+
+def convert_key(ranks, maps):
+    return maps.join(ranks).map(lambda x: (x[1][0], x[1][1]))
 
 
 def computeContribs(dests, rank):
@@ -49,12 +53,10 @@ if __name__ == '__main__':
     last1 = time.time()
     print("pre-processing time: %.2f seconds" % (last1 - first1))
 
-
-
     # graph processing
     if sys.argv[2] == 'pagerank':
         first2 = time.time()
-        ITER = 2
+        ITER = 20
         d = 0.8
         N = vertex_num
         # First RDD: vertex adjacent list
@@ -78,5 +80,35 @@ if __name__ == '__main__':
             print(id2v.lookup(i[0])[0], i[1])
         last3 = time.time()
         print("post-processing time: %.2f seconds" % (last3 - first3))
+
+        v2id.coalesce(1,True).saveAsTextFile("pagerank-mapping.txt")
+
+    elif sys.argv[2] == 'trustrank':
+        first2 = time.time()
+        ITER = 1
+        d = 0.8
+        N = vertex_num
+        AdjacencyList = cv_edges.groupByKey().cache()
+        whitelist = random.sample(range(0, N), 100)
+        Ranks = AdjacencyList.map(lambda x: (x[0], 1.0/100) if x[0] in whitelist else (x[0], 0)).cache()
+        for iteration in range(0, ITER):
+            contribs = AdjacencyList.join(Ranks).flatMap(
+                lambda x: computeContribs(x[1][0], x[1][1]))
+            Ranks = contribs.reduceByKey(
+                lambda x, y: x + y).mapValues(lambda rank: rank * d + (1-d)/N)
+        last2 = time.time()
+        print("graph processing time: %.2f seconds" % (last2 - first2))
+
+        # post-processing
+        first3 = time.time()
+        print("convert all node ID to raw identifier:")
+        post_ranks = convert_key(Ranks, id2v)
+        last3 = time.time()
+        print("post-processing time: %.2f seconds" % (last3 - first3))
+
+        print(whitelist)
+        v2id.coalesce(1,True).saveAsTextFile("trustrank-mapping.txt")
+        Ranks.coalesce(1,True).saveAsTextFile("trustrank-graph-processing.txt")
+        post_ranks.coalesce(1,True).saveAsTextFile("trustrank-post-processing.txt")
 
     sc.stop()
