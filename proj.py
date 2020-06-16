@@ -91,11 +91,11 @@ if __name__ == '__main__':
         N = vertex_num
         AdjacencyList = cv_edges.groupByKey().cache()
         whitelist = random.sample(range(0, N), 100)
-        # way 1
+        ## way 1
         Ranks = AdjacencyList.map(lambda x: (x[0], 1.0/100) if x[0] in whitelist else (x[0], 0)).cache()
-        # way 2
+        ## way 2
         # wlRDD = sc.parallelize(whitelist).map(lambda x:(x, 1.0/100))
-        # Ranks = vertex_list.union(wlRDD).reduceByKey(lambda x,y: x+y)
+        # Ranks = AdjacencyList.map(lambda x: (x[0], 0)).union(wlRDD).reduceByKey(lambda x,y: x+y)
         for iteration in range(0, ITER):
             contribs = AdjacencyList.join(Ranks).flatMap(
                 lambda x: computeContribs(x[1][0], x[1][1]))
