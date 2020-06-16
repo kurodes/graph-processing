@@ -32,7 +32,7 @@ if __name__ == '__main__':
     lines = sc.textFile(sys.argv[1])
 
 
-    vertex_list = lines.flatMap(lambda x: x.split(' ')).distinct()
+    #vertex_list = lines.flatMap(lambda x: x.split(' ')).distinct()
 
     # vertex_num = vertex_list.count()
     # v2id = vertex_list.zipWithIndex()
@@ -43,8 +43,14 @@ if __name__ == '__main__':
 
     # whitelist = random.sample(range(101, 105), 2)
     # print(whitelist)
-    whitelist = ['101','102']
-    Ranks = vertex_list.map(lambda x: (x, 1.0/100) if x in whitelist else (x, 0)).cache()
+    vertexes = [1,2,3,4,5,6,7,8,9]
+    whitelist = [1,2,3]
+    vertex_list = sc.parallelize(vertexes).map(lambda x: (x, 0))
+
+
+    wlRDD = sc.parallelize(whitelist).map(lambda x:(x, 1.0/100))
+    Ranks = vertex_list.union(wlRDD).reduceByKey(lambda x,y: x+y)
+    # Ranks = vertex_list.map(lambda x: (x, 1.0/100) if x in whitelist else (x, 0)).cache()
 
     print(Ranks.collect())
 
