@@ -1,0 +1,3 @@
+pre-processing time: 5.35 seconds
+graph processing time: 155.53 seconds
+post-processing time: 8.93 seconds

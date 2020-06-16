@@ -7,8 +7,8 @@ from pyspark import SparkConf, SparkContext
 
 def quiet_logs(sc):
     logger = sc._jvm.org.apache.log4j
-    logger.LogManager.getLogger("org"). setLevel(logger.Level.ERROR)
-    logger.LogManager.getLogger("akka").setLevel(logger.Level.ERROR)
+    logger.LogManager.getLogger("org"). setLevel(logger.Level.WARN)
+    logger.LogManager.getLogger("akka").setLevel(logger.Level.WARN)
 
 
 def convert(edges, maps):
@@ -81,11 +81,12 @@ if __name__ == '__main__':
         last3 = time.time()
         print("post-processing time: %.2f seconds" % (last3 - first3))
 
-        v2id.coalesce(1,True).saveAsTextFile("pagerank-mapping.txt")
+        if sys.argv[1] == 'wiki-Vote.txt':
+            v2id.coalesce(1,True).saveAsTextFile("pagerank-mapping.txt")
 
     elif sys.argv[2] == 'trustrank':
         first2 = time.time()
-        ITER = 1
+        ITER = 20
         d = 0.8
         N = vertex_num
         AdjacencyList = cv_edges.groupByKey().cache()
@@ -96,6 +97,7 @@ if __name__ == '__main__':
                 lambda x: computeContribs(x[1][0], x[1][1]))
             Ranks = contribs.reduceByKey(
                 lambda x, y: x + y).mapValues(lambda rank: rank * d + (1-d)/N)
+        Ranks.coalesce(1,True).saveAsTextFile("trustrank-graph-processing.txt")
         last2 = time.time()
         print("graph processing time: %.2f seconds" % (last2 - first2))
 
@@ -103,12 +105,12 @@ if __name__ == '__main__':
         first3 = time.time()
         print("convert all node ID to raw identifier:")
         post_ranks = convert_key(Ranks, id2v)
+        post_ranks.coalesce(1,True).saveAsTextFile("trustrank-post-processing.txt")
         last3 = time.time()
         print("post-processing time: %.2f seconds" % (last3 - first3))
 
         print(whitelist)
         v2id.coalesce(1,True).saveAsTextFile("trustrank-mapping.txt")
-        Ranks.coalesce(1,True).saveAsTextFile("trustrank-graph-processing.txt")
-        post_ranks.coalesce(1,True).saveAsTextFile("trustrank-post-processing.txt")
+        
 
     sc.stop()
